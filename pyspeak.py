@@ -1,82 +1,70 @@
 import speech_recognition as sr
-import datetime
 import pyttsx3
+import datetime
 import wikipedia
-import webbrowser
+import pywhatkit
 
-# Cria uma instância do reconhecedor de fala
-r = sr.Recognizer()
 
-# Cria uma instância do engine para falar
-engine = pyttsx3.init()
+audio = sr.Recognizer() # Reconhece o audio
+maquina = pyttsx3.init()
 
-def search_wikipedia(query):
-    try:
-        summary = wikipedia.summary(query, sentences=2)
-        engine.say(summary)
-        engine.runAndWait()
-    except wikipedia.exceptions.DisambiguationError as e:
-        engine.say("Houve um erro na pesquisa. Por favor, tente novamente.")
-        engine.runAndWait()
-    except wikipedia.exceptions.PageError as e:
-        engine.say("Não foi possível encontrar o que você procurou. Por favor, tente novamente.")
-        engine.runAndWait()
-
-def search_youtube():
-    engine.say("O que você gostaria de ver?")
-    engine.runAndWait()
+def abrir_youtube():
     with sr.Microphone() as source:
-        r.adjust_for_ambient_noise(source)
-        audio = r.listen(source)
+        print('O que você quer procurar no Youtube?')
+        maquina.say('O que você quer procurar no Youtube?')
+        maquina.runAndWait()
+        audio = sr.Recognizer().record(source, duration=5)
         try:
-            search_term = r.recognize_google(audio, language='pt-BR')
-            url = f"https://www.youtube.com/results?search_query={search_term}"
-            webbrowser.get().open(url)
-            engine.say(f"Aqui está o resultado para {search_term}.")
-            engine.runAndWait()
-        except sr.UnknownValueError:
-            engine.say("Desculpe, não consegui entender o que você disse.")
-            engine.runAndWait()
-        except sr.RequestError as e:
-            engine.say("Houve um erro na conexão. Por favor, tente novamente.")
-            engine.runAndWait()
+            pesquisa = sr.Recognizer().recognize_google(audio, language='pt-BR')
+            maquina.say('Ok! Procurando por ' + pesquisa)
+            maquina.runAndWait()
+            pywhatkit.playonyt(pesquisa)
+        except:
+            maquina.say('Desculpe, não entendi o que você falou.')
+            maquina.runAndWait()
 
-# Usa o microfone como fonte de entrada
-with sr.Microphone() as source:
 
-    # Ajusta o ruído de fundo
-    r.adjust_for_ambient_noise(source)
-
-    # Exibe mensagem para indicar que está ouvindo
-    print("Diga algo!")
-
-    # Grava o áudio do microfone
-    audio = r.listen(source)
-
+# Criando um bloco para retornar um erro
+def executa_comando():
     try:
-        # Usa o Google Speech Recognition para transcrever a fala
-        text = r.recognize_google(audio, language='pt-BR')
-        print("Você disse: {}".format(text))
+        with sr.Microphone() as source:
+            print('Ouvindo...')
+            voz = audio.listen(source) # para ouvir
+            comando = audio.recognize_google(voz, language='pt-BR')
+            comando = comando.lower()
+            if 'tina' in comando:
+                comando = comando.replace('tina', '')
+                maquina.runAndWait()
 
-        # Condicional para checar se o usuário pediu as horas
-        if "que horas são" in text:
-            now = datetime.datetime.now()
-            hora_atual = now.strftime("Agora são %H horas e %M minutos.")
-            engine.say(hora_atual)
-            engine.runAndWait()
+    except:
+        print('O microfone não está funcionando...')
+    
+    return comando
 
-        # Condicional para checar se o usuário pediu para pesquisar na Wikipedia
-        elif "pesquisar na wikipedia" in text:
-            query = text.replace("pesquisar na wikipedia", "")
-            search_wikipedia(query)
 
-        # Condicional para checar se o usuário pediu para procurar no Youtube
-        elif "procurar no youtube" in text:
-            search_youtube()
+def comando_voz_usuario():
+    comando = executa_comando()
+    if 'horas' in comando:
+        hora = datetime.datetime.now().strftime('%H:%M')
+        maquina.say('Agora são' + hora)
+        maquina.runAndWait()
+    elif 'me responda' in comando:
+        procurar = comando.replace('me responda', '')
+        wikipedia.set_lang('pt')
+        resultado = wikipedia.summary(procurar, 3)
+        print(resultado)
+        maquina.say(resultado)
+        maquina.runAndWait()
+    elif "abrir youtube" in comando.lower():
+        abrir_youtube()
 
-    except sr.UnknownValueError:
-        # Caso a fala não seja compreendida
-        print("Não entendi o que você disse")
-    except sr.RequestError as e:
-        # Caso ocorra um erro de conexão
-        print("Erro ao realizar a transcrição; {0}".format(e))
+
+        
+comando_voz_usuario()
+
+while True:
+        resposta = input("Deseja continuar? (s/n): ")
+        if resposta.lower() == "n":
+            break
+        else:
+            comando_voz_usuario()
